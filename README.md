@@ -114,6 +114,16 @@ O CachyOS Cleaner foi desenvolvido com uma abordagem conservadora. Antes de qual
 
 Por padrão, itens enviados à **lixeira** (via `gio trash`) podem ser restaurados. Quando a lixeira não está disponível, os itens são movidos para `~/.local/share/cachyos-cleaner/undo/`, permitindo restauração manual. O histórico de limpezas (disponível no menu 📋) permite desfazer a última operação quando tecnicamente possível.
 
+### Progresso da limpeza
+
+Durante a limpeza, um diálogo de progresso é exibido com:
+- Barra de progresso com porcentagem atual
+- Nome do item sendo processado no momento
+- Botão **Cancelar** que pede confirmação antes de interromper
+- Indicação visual clara de que a limpeza está em andamento (a interface não trava)
+
+Ao confirmar a limpeza, o usuário escolhe se deseja enviar os itens à **lixeira** (permite desfazer) ou **excluir permanentemente**.
+
 ### Configurações
 
 O menu **⚙ Configurar** permite:
@@ -133,6 +143,12 @@ A interface gráfica é construída com **Python**, **PySide6** e **Qt**. Além 
 - **📊 Espaço** — visualização gráfica do espaço utilizado por cada categoria (gráfico de barras interativo)
 - **📋 Histórico** — histórico das limpezas realizadas com opção de desfazer
 - **⚙ Configurar** — gerenciamento de exclusões, diretórios ignorados e áreas de varredura
+
+Ao clicar em **🧹 Limpar selecionados**, uma barra de progresso é exibida mostrando:
+- A porcentagem de conclusão
+- O item que está sendo processado no momento
+- Botão **Cancelar** com confirmação antes de interromper
+- Opção de enviar à lixeira ou excluir permanentemente
 
 ## 📦 Estrutura do projeto
 
@@ -403,6 +419,9 @@ ls ~/.local/share/cachyos-cleaner/undo/
 - [x] Cálculo de espaço utilizado
 - [x] Seleção de itens
 - [x] Confirmação antes da limpeza
+- [x] Escolha entre lixeira e exclusão permanente
+- [x] Barra de progresso durante a limpeza (porcentagem + item atual)
+- [x] Cancelamento da limpeza com confirmação
 - [x] Categorias de segurança (Seguro, Revisar, Protegido, Grande)
 - [x] Diretórios protegidos
 - [x] Proteção contra links simbólicos
@@ -437,24 +456,11 @@ ls ~/.local/share/cachyos-cleaner/undo/
 
 ## 🔮 Possíveis melhorias futuras
 
-- [ ] Limpeza do cache do pacman ✅
-- [ ] Limpeza segura do cache do pnpm ✅
-- [ ] Limpeza segura do cache do npm ✅
-- [ ] Limpeza de caches do Yarn ✅
-- [ ] Gerenciamento de kernels antigos ✅
-- [ ] Limpeza de logs antigos ✅
-- [ ] Gerenciamento de arquivos temporários ✅
-- [ ] Análise do `/var/cache` ✅
-- [ ] Análise de arquivos grandes ✅
-- [ ] Visualização gráfica do espaço utilizado ✅
-- [ ] Histórico das limpezas ✅
-- [ ] Possibilidade de desfazer operações quando tecnicamente possível ✅
-- [ ] Exclusões personalizadas ✅
-- [ ] Lista de diretórios ignorados ✅
-- [ ] Integração com ferramentas nativas do Arch/CachyOS ✅
+- [ ] Tradução da interface (i18n com suporte a .po files)
 - [ ] Atualização automática do aplicativo
-- [ ] Tradução da interface
-- [ ] Suporte a outras distribuições Linux ✅
+- [ ] Monitoramento em tempo real do espaço liberado durante a limpeza
+- [ ] Agendamento de limpezas automáticas
+- [ ] Relatórios detalhados por categoria
 
 ## 🤝 Contribuição
 
