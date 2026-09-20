@@ -8,7 +8,7 @@ import threading
 from pathlib import Path
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QEvent
+from PySide6.QtCore import Qt, QEvent, QThread, Signal, QObject
 from PySide6.QtGui import QFont, QIcon, QPainter, QColor, QPen
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -635,6 +635,114 @@ class HistoryDialog(QDialog):
             QMessageBox.warning(self, APP_NAME, f"Erro ao limpar histórico: {e}")
 
 
+class CleanWorker(QObject):
+    progress = Signal(int, str)
+    finished = Signal(bool, str, int, list, list)
+
+    def __init__(self, selected, use_trash=True, parent=None):
+        super().__init__(parent)
+        self.selected = selected
+        self.cancelled = False
+        self.use_trash = use_trash
+
+    def run(self):
+        backups = []
+        errors = []
+        removed = 0
+        total = len(self.selected)
+        for idx, (name, path, size, kind) in enumerate(self.selected):
+            if self.cancelled:
+                self.finished.emit(False, "Cancelado pelo usuário.", removed, backups, errors)
+                return
+            try:
+                before = folder_size(path)
+                self.progress.emit(int((idx + 1) / total * 100), name)
+                if path.exists() and path.is_dir() and not path.is_symlink():
+                    if self.use_trash:
+                        if trash_path(path):
+                            backups.append((str(path), None))
+                            removed += before
+                            continue
+                        else:
+                            self.use_trash = False
+                    for child in path.iterdir():
+                        if self.cancelled:
+                            self.finished.emit(False, "Cancelado pelo usuário.", removed, backups, errors)
+                            return
+                        if child.is_symlink() or child.is_file():
+                            backup_dest = move_to_backup(child)
+                            if backup_dest:
+                                backups.append((str(child), backup_dest))
+                        elif child.is_dir():
+                            backup_dest = move_to_backup(child)
+                            if backup_dest:
+                                backups.append((str(child), backup_dest))
+                    try:
+                        if path.exists() and not any(path.iterdir()):
+                            path.rmdir()
+                    except Exception:
+                        pass
+                    removed += before
+                elif path.exists() and path.is_file():
+                    backup_dest = move_to_backup(path)
+                    if backup_dest:
+                        backups.append((str(path), backup_dest))
+                        removed += size
+            except Exception as e:
+                errors.append(f"{name}: {e}")
+        self.finished.emit(True, "", removed, backups, errors)
+
+
+class ProgressDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Limpando…")
+        self.resize(450, 180)
+        self.setFixedSize(450, 180)
+        self.setModal(True)
+        self.cancelled = False
+        self.worker = None
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        self.label = QLabel("Iniciando…")
+        self.label.setStyleSheet("font-size:13px;")
+        layout.addWidget(self.label)
+
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 100)
+        self.progress.setValue(0)
+        self.progress.setTextVisible(True)
+        layout.addWidget(self.progress)
+
+        btns = QHBoxLayout()
+        btns.addStretch()
+        self.cancel_btn = QPushButton("✕ Cancelar")
+        self.cancel_btn.clicked.connect(self.request_cancel)
+        btns.addWidget(self.cancel_btn)
+        layout.addLayout(btns)
+
+    def set_worker(self, worker):
+        self.worker = worker
+
+    def request_cancel(self):
+        reply = QMessageBox.question(self, APP_NAME,
+            "Deseja realmente cancelar a limpeza?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.cancelled = True
+            if self.worker:
+                self.worker.cancelled = True
+            self.cancel_btn.setEnabled(False)
+            self.label.setText("Cancelando…")
+
+    def update_progress(self, pct, item_name):
+        self.progress.setValue(pct)
+        self.label.setText(f"Removendo: {item_name}")
+
+
 class Cleaner(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -848,68 +956,54 @@ class Cleaner(QMainWindow):
             f"Deseja enviar à lixeira (permite desfazer) ou excluir permanentemente?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel,
             QMessageBox.StandardButton.Yes)
-        if answer != QMessageBox.StandardButton.Yes:
+        if answer == QMessageBox.StandardButton.Cancel:
             return
+        if answer == QMessageBox.StandardButton.No:
+            use_trash = False
+        else:
+            use_trash = True
 
-        backups = []
-        errors = []
-        removed = 0
-        use_trash = True
+        self._selected_for_clean = selected
 
-        for name, path, size, kind in selected:
-            try:
-                before = folder_size(path)
-                if path.exists() and path.is_dir() and not path.is_symlink():
-                    if use_trash:
-                        if trash_path(path):
-                            backups.append((str(path), None))
-                            removed += before
-                            continue
-                        else:
-                            use_trash = False
-                    children_moved = 0
-                    for child in path.iterdir():
-                        if child.is_symlink() or child.is_file():
-                            backup_dest = move_to_backup(child)
-                            if backup_dest:
-                                backups.append((str(child), backup_dest))
-                                children_moved += 1
-                        elif child.is_dir():
-                            backup_dest = move_to_backup(child)
-                            if backup_dest:
-                                backups.append((str(child), backup_dest))
-                                children_moved += 1
-                    try:
-                        if path.exists() and not any(path.iterdir()):
-                            path.rmdir()
-                    except Exception:
-                        pass
-                    removed += before
-                elif path.exists() and path.is_file():
-                    backup_dest = move_to_backup(path)
-                    if backup_dest:
-                        backups.append((str(path), backup_dest))
-                        removed += size
-            except Exception as e:
-                errors.append(f"{name}: {e}")
+        self.clean_dialog = ProgressDialog(self)
+        thread = QThread()
+        worker = CleanWorker(selected, use_trash=use_trash)
+        worker.moveToThread(thread)
+        self.clean_dialog.set_worker(worker)
 
-        entry = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "total": removed,
-            "count": len(backups),
-            "distro": DISTRO,
-            "backups": backups,
-            "items": [n for n, p, s, k in selected],
-        }
-        save_history(entry)
+        thread.started.connect(worker.run)
+        worker.progress.connect(self.clean_dialog.update_progress)
+        worker.finished.connect(self.on_clean_finished)
+        worker.finished.connect(self.clean_dialog.close)
+        worker.finished.connect(thread.quit)
+        self.clean_dialog.finished.connect(lambda: setattr(worker, 'cancelled', True))
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(worker.deleteLater)
+
+        thread.start()
+        self.clean_dialog.exec()
+
+    def on_clean_finished(self, success, message, removed, backups, errors):
+        if success:
+            entry = {
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "total": removed,
+                "count": len(backups),
+                "distro": DISTRO,
+                "backups": backups,
+                "items": [n for n, p, s, k in self._selected_for_clean],
+            }
+            save_history(entry)
 
         if errors:
             QMessageBox.warning(self, APP_NAME,
-                f"Limpeza parcial.\n\nLiberado: {human(removed)}\n\n" + "\n".join(errors))
-        else:
+                f"{'Limpeza cancelada.' if not success else 'Limpeza parcial.'}\n\n"
+                f"Liberado: {human(removed)}\n\n" + "\n".join(errors))
+        elif success:
             QMessageBox.information(self, APP_NAME,
                 f"Limpeza concluída.\n\nEspaço processado: {human(removed)}\n"
                 f"{len(backups)} itens salvos para possível restauração.")
+
         self.start_scan()
 
     def show_settings(self):
