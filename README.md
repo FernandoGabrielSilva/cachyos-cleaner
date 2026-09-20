@@ -23,6 +23,7 @@ Repositório: https://github.com/FernandoGabrielSilva/cachyos-cleaner
 - [🔧 Executando sem FUSE](#-executando-sem-fuse)
 - [📦 O que existe dentro do AppImage?](#-o-que-existe-dentro-do-appimage)
 - [🐍 Tecnologias utilizadas](#-tecnologias-utilizadas)
+- [🐧 Suporte a distribuições Linux](#-suporte-a-distribuições-linux)
 - [🚫 O que o programa NÃO faz](#-o-que-o-programa-não-faz)
 - [🔐 Links simbólicos](#-links-simbólicos)
 - [🧪 Desenvolvimento](#-desenvolvimento)
@@ -39,22 +40,43 @@ Repositório: https://github.com/FernandoGabrielSilva/cachyos-cleaner
 
 ## Sobre o projeto
 
-O CachyOS Cleaner é um aplicativo gráfico para análise e limpeza de caches e arquivos temporários no Linux, com foco em CachyOS/Arch. A ferramenta não apaga nada automaticamente: ela analisa os diretórios configurados, mostra o espaço ocupado, e só remove o que o usuário selecionar e confirmar.
+O CachyOS Cleaner é um aplicativo gráfico para análise e limpeza de caches, arquivos temporários, kernels antigos, logs e outros dados no Linux, com foco em CachyOS/Arch. A ferramenta não apaga nada automaticamente: ela analisa os diretórios configurados, mostra o espaço ocupado, e só remove o que o usuário selecionar e confirmar.
 
 ## 🧹 O que o programa limpa?
 
-O programa atualmente concentra a limpeza em caches e arquivos temporários previamente definidos no código, por exemplo:
+O programa concentra a limpeza em múltiplas categorias de caches e arquivos temporários:
 
+### Caches de aplicativos
 - Thumbnails
 - Cache do Zen Browser
 - Cache do Vivaldi
 - Cache do Google Chrome
-- Cache do Mozilla
+- Cache do Mozilla/Firefox
 - Cache do Brave
 - Cache do node-gyp
 - Cache do VS Code (C/C++)
 - Cache do Tracker3
 - Cache do pip
+- Cache do pnpm
+- Cache do npm
+- Cache do Yarn
+- Cache do Dart
+- Cache do Gradle
+- Cache do Maven
+- Cache do Cargo
+- Caches do PyCharm/IntelliJ
+- Cache Steam Runtime
+
+### Caches do sistema
+- Cache do pacman (`/var/cache/pacman/pkg/`)
+- Cache paccache (Arch/CachyOS)
+- Caches em `/var/cache/`
+- Arquivos temporários (`/tmp/`, `/var/tmp/`)
+
+### Gerenciamento de sistema
+- Kernels antigos (Arch/CachyOS)
+- Logs antigos (`/var/log/`)
+- Arquivos grandes (varredura de `/tmp`, `/var/tmp`, `~/.cache`, `/var/cache`)
 
 ## 🗂️ Categorias
 
@@ -62,14 +84,20 @@ Alguns caches podem ser grandes ou conter arquivos que o usuário pode querer ma
 
 - `~/.cache/codex-runtimes`
 - `~/.cache/nvidia`
+- `~/.cache/dart`
+- `~/.cache/gradle`
+- `~/.cache/maven`
+- `~/.cache/cargo`
+- Caches JetBrains
+- Kernels antigos (Arch/CachyOS)
 
 ## 🔴 Protegidos
 
-Alguns diretórios importantes são apenas identificados pelo programa e **não** são apagados pela limpeza automática, pois podem conter jogos, IDEs, runtimes, aplicativos ou outros dados que não devem ser removidos como se fossem simples caches. Atualmente:
+Alguns diretórios importantes são apenas identificados pelo programa e **não** são apagados pela limpeza automática:
 
-- `~/.local/share/Steam` — pode conter jogos, Proton, compatdata, shader cache, runtimes, configurações e downloads.
-- `~/.local/share/JetBrains/Toolbox` — pode conter instalações de CLion, IntelliJ IDEA, PyCharm, WebStorm e outros produtos JetBrains. A remoção deve ser feita pelo próprio gerenciador do Toolbox, não por uma limpeza genérica.
-- `/var/lib/flatpak` — o Flatpak possui ferramentas próprias para gerenciar aplicativos, runtimes e dependências; não é recomendado apagar esse diretório para liberar espaço.
+- `~/.local/share/Steam` — jogos, Proton, compatdata, shader cache
+- `~/.local/share/JetBrains/Toolbox` — instalações de IDEs JetBrains
+- `/var/lib/flatpak` — Flatpak exige ferramentas próprias
 
 ## 🛡️ Segurança
 
@@ -82,55 +110,59 @@ O CachyOS Cleaner foi desenvolvido com uma abordagem conservadora. Antes de qual
 5. O programa solicita confirmação.
 6. Somente os itens selecionados são processados.
 
-O programa também **evita seguir links simbólicos** durante a análise e a limpeza, o que reduz o risco de a limpeza atravessar para outro diretório ou filesystem através de um symlink.
+### Desfazer operações
+
+Por padrão, itens enviados à **lixeira** (via `gio trash`) podem ser restaurados. Quando a lixeira não está disponível, os itens são movidos para `~/.local/share/cachyos-cleaner/undo/`, permitindo restauração manual. O histórico de limpezas (disponível no menu 📋) permite desfazer a última operação quando tecnicamente possível.
+
+### Configurações
+
+O menu **⚙ Configurar** permite:
+- **Áreas de Varredura** — ver todas as áreas escaneadas, marcar/desmarcar quais incluir na análise, adicionar áreas customizadas e remover itens
+- **Exclusões** — diretórios completamente ignorados (não aparecem na interface)
+- **Diretórios Ignorados** — diretórios exibidos apenas como informação, não removidos na limpeza
+- **Outros** — verificação automática de atualizações e configuração de idioma
+
+### Exclusões e diretórios ignorados
+
+O programa permite configurar **exclusões personalizadas** (diretórios completamente ignorados) e **diretórios ignorados** (exibidos apenas como informação) no menu ⚙ Configurar.
 
 ## 🖥️ Interface
 
-A interface gráfica é construída com **Python**, **PySide6** e **Qt**. Ela apresenta os diretórios encontrados de forma organizada e permite selecionar os itens que serão limpos, com o objetivo de tornar a manutenção do sistema mais simples sem exigir vários comandos no terminal.
+A interface gráfica é construída com **Python**, **PySide6** e **Qt**. Além da lista principal de limpeza, oferece:
+
+- **📊 Espaço** — visualização gráfica do espaço utilizado por cada categoria (gráfico de barras interativo)
+- **📋 Histórico** — histórico das limpezas realizadas com opção de desfazer
+- **⚙ Configurar** — gerenciamento de exclusões, diretórios ignorados e áreas de varredura
 
 ## 📦 Estrutura do projeto
 
 ```
-cachyos-cleaner-pyside6/
+cachyos-cleaner/
 ├── src/
 │   └── cachyos_cleaner.py
-│
 ├── CachyOS-Cleaner.desktop
 ├── build-appimage.sh
 ├── README.md
-│
-├── .build-python/          # ambiente Python usado durante a compilação
-│
-└── AppDir/
-    ├── AppRun
-    └── usr/
-        ├── bin/
-        ├── lib/
-        └── share/
+├── AppDir/
+│   └── (conteúdo do AppImage durante build)
+└── .build-python/
+    └── (ambiente Python durante build)
 ```
 
-`.build-python/` e `AppDir/` são usados durante o processo de compilação e podem ser recriados pelo script `build-appimage.sh`.
+Dados persistentes (histórico, configurações): `~/.local/share/cachyos-cleaner/`
 
 ## 🔨 Compilação
 
-O projeto possui um script automatizado, `./build-appimage.sh`, que executa as seguintes etapas:
+O projeto possui um script automatizado, `./build-appimage.sh`:
 
 1. Cria o ambiente Python.
 2. Instala/atualiza o PySide6.
 3. Identifica a versão do Python.
-4. Copia o Python para o AppDir.
-5. Copia a biblioteca padrão do Python.
-6. Copia os pacotes instalados.
-7. Copia a libpython.
-8. Coleta as bibliotecas compartilhadas necessárias.
-9. Configura o AppRun.
-10. Cria o arquivo `.desktop`.
-11. Cria o ícone.
-12. Gera o filesystem SquashFS.
-13. Combina o runtime do AppImage com o SquashFS.
-14. Gera o AppImage final.
-
-O resultado é o arquivo `CachyOS-Cleaner-x86_64.AppImage`.
+4. Copia o Python e bibliotecas para o AppDir.
+5. Coleta dependências compartilhadas.
+6. Configura o AppRun.
+7. Cria Desktop Entry e ícone.
+8. Gera SquashFS e AppImage final.
 
 ### Dependências para compilar
 
@@ -140,19 +172,17 @@ No CachyOS/Arch:
 sudo pacman -S python python-pip python-virtualenv squashfs-tools curl
 ```
 
-Também são utilizados pelo processo de build: `python3`, `pip`, `venv`, `mksquashfs`, `curl` ou `wget`, e `ldd`.
+Também são utilizados: `python3`, `pip`, `venv`, `mksquashfs`, `curl` ou `wget`, e `ldd`.
 
 > O projeto **não** depende do `appimagetool`. A imagem é construída diretamente com o runtime do AppImage e o `mksquashfs`.
 
 ## 🚀 Compilando
 
 ```bash
-cd ~/Downloads/cachyos-cleaner-pyside6
+cd ~/Downloads/cachyos-cleaner
 chmod +x build-appimage.sh
 ./build-appimage.sh
 ```
-
-Ao final deverá existir o arquivo `CachyOS-Cleaner-x86_64.AppImage`.
 
 ## ▶️ Executando
 
@@ -163,13 +193,9 @@ chmod +x CachyOS-Cleaner-x86_64.AppImage
 
 ## 🔧 Executando sem FUSE
 
-Alguns sistemas Linux não possuem suporte para montar AppImages diretamente. Nesse caso, tente:
-
 ```bash
 ./CachyOS-Cleaner-x86_64.AppImage --appimage-extract-and-run
 ```
-
-Isso executa o aplicativo extraindo o conteúdo do AppImage, sem depender da montagem FUSE tradicional.
 
 ## 📦 O que existe dentro do AppImage?
 
@@ -192,19 +218,58 @@ CachyOS-Cleaner-x86_64.AppImage
     └── Ícone
 ```
 
-Dessa forma, o computador de destino não precisa ter o ambiente Python/PySide6 configurado para executar o programa.
-
 ## 🐍 Tecnologias utilizadas
 
-- **Python** — lógica de análise de diretórios, cálculo de espaço, seleção de itens, limpeza e interação com o sistema de arquivos.
-- **PySide6** — interface gráfica baseada em Qt.
-- **Qt** — componentes visuais da aplicação.
-- **SquashFS** — compactação do conteúdo do aplicativo dentro do AppImage.
-- **AppImage** — distribuição do aplicativo como um único arquivo executável.
+- **Python** — lógica de análise, limpeza, histórico, configurações e integração com o sistema
+- **PySide6** — interface gráfica baseada em Qt
+- **Qt** — componentes visuais, pintura de gráficos (QPainter)
+- **gio** — integração com a lixeira do sistema (trash)
+- **SquashFS** — compactação do conteúdo do AppImage
+- **AppImage** — distribuição como arquivo executável único
+
+## 🐧 Suporte a outras distribuições Linux
+
+O programa detecta automaticamente a distribuição Linux via `/etc/os-release` e ajusta seu comportamento:
+
+### CachyOS / Arch Linux (detecção: `arch`, `cachyos`)
+- Limpeza do cache paccache
+- Gerenciamento de kernels (pacman -Q linux*)
+- Listagem de /var/cache
+- Busca de arquivos grandes
+- Integração com ferramentas nativas (paccache)
+
+### Fedora / RHEL / CentOS / Rocky (detecção: `fedora`, `rhel`, `centos`, `rocky`, `amzn`)
+- Limpeza de caches de pacotes (dnf/yum)
+- Gerenciamento de kernels (rpm-ostree quando aplicável)
+- Logs do journald
+- Arquivos temporários
+
+### Debian / Ubuntu / Linux Mint / Pop!_OS (detecção: `debian`, `ubuntu`, `linuxmint`, `pop`)
+- Limpeza de cache apt (`/var/cache/apt/archives/`)
+- Gerenciamento de kernels antigos (apt autoremove)
+- Logs antigos
+- Arquivos temporários
+
+### openSUSE (detecção: `opensuse`, `opensuse-tumbleweed`, `opensuse-leap`)
+- Limpeza de cache zypper
+- Gerenciamento de kernels
+- Logs antigos
+- Arquivos temporários
+
+### Qualquer distribuição (funcionalidade universal)
+- Limpeza de caches de navegadores (Chrome, Firefox, Brave, Vivaldi, etc.)
+- Limpeza de caches de desenvolvimento (npm, pnpm, yarn, pip, cargo, etc.)
+- Arquivos temporários do sistema
+- Thumbnails
+- Links simbólicos (proteção)
+- Histórico de limpezas
+- Exclusões personalizadas
+
+> Os pacotes de cache específicos de cada distro exigem que o gerenciador de pacotes correspondente esteja instalado. Caches de aplicativos funcionam em qualquer distribuição.
 
 ## 🚫 O que o programa NÃO faz?
 
-O CachyOS Cleaner não foi desenvolvido para ser um apagador indiscriminado do sistema. Ele não deve ser utilizado para:
+O CachyOS Cleaner não é um apagador indiscriminado. Ele não deve ser utilizado para:
 
 - apagar aleatoriamente arquivos de `/usr`;
 - apagar `/etc`;
@@ -215,36 +280,21 @@ O CachyOS Cleaner não foi desenvolvido para ser um apagador indiscriminado do s
 - remover pacotes do sistema;
 - remover automaticamente todo o Flatpak;
 - remover automaticamente a biblioteca do Steam;
-- remover automaticamente instalações do JetBrains Toolbox.
-
-Os diretórios protegidos são tratados como informação/revisão, não como alvos normais de limpeza.
+- remover automaticamente instalações do JetBrains Toolbox;
+- remover kernels em uso sem confirmação.
 
 ## 🔐 Links simbólicos
 
-A limpeza foi projetada para **não seguir links simbólicos**. Isso é importante porque um link dentro de um diretório de cache poderia apontar para outro local do sistema — a intenção é manter a limpeza restrita aos diretórios originalmente definidos pelo programa.
+A limpeza **não segue links simbólicos**, evitando acessar diretórios fora dos alvos definidos.
 
 ## 🧪 Desenvolvimento
 
 ```bash
-cd cachyos-cleaner-pyside6
-
-# criar o ambiente
+cd cachyos-cleaner
 python3 -m venv .build-python
-
-# ativar
 source .build-python/bin/activate
-
-# instalar o PySide6
 pip install PySide6
-
-# executar diretamente
 python src/cachyos_cleaner.py
-```
-
-Durante o desenvolvimento, também é possível executar diretamente:
-
-```bash
-.build-python/bin/python src/cachyos_cleaner.py
 ```
 
 ## 🏗️ Processo de distribuição
@@ -259,7 +309,7 @@ Código Python
  Ambiente Python
       │
       ▼
-     AppDir
+    AppDir
       │
       ├── Python
       ├── PySide6
@@ -268,10 +318,10 @@ Código Python
       └── Aplicação
       │
       ▼
-   mksquashfs
+  mksquashfs
       │
       ▼
-  SquashFS
+ SquashFS
       │
       +
       │
@@ -286,11 +336,11 @@ CachyOS-Cleaner-x86_64.AppImage
 - Build atual: **Linux x86_64**
 - Desenvolvido e testado em **CachyOS/Arch Linux**
 
-Por utilizar bibliotecas do sistema de build, a compatibilidade tende a ser melhor em distribuições Linux modernas com arquitetura x86_64. O AppImage não elimina dependências fundamentais do sistema operacional, como kernel Linux, hardware compatível, driver gráfico e demais componentes fundamentais do sistema.
+Por utilizar bibliotecas do sistema de build, a compatibilidade tende a ser melhor em distribuições Linux modernas com arquitetura x86_64. Funciona em qualquer distribuição Linux com Python 3 e PySide6 disponíveis (ou via AppImage).
 
 ## ⚠️ Considerações importantes
 
-O tamanho do cache não significa necessariamente que todos os arquivos devem ser apagados — caches existem para acelerar aplicativos e reduzir trabalho repetido. Depois de uma limpeza:
+O tamanho do cache não significa que todos os arquivos devem ser apagados. Depois de uma limpeza:
 
 - alguns aplicativos podem iniciar mais lentamente na primeira execução;
 - thumbnails podem precisar ser recriados;
@@ -298,34 +348,42 @@ O tamanho do cache não significa necessariamente que todos os arquivos devem se
 - ferramentas de desenvolvimento podem recriar arquivos;
 - o espaço liberado pode voltar a ser utilizado posteriormente.
 
-Por isso, o Cleaner utiliza categorias diferentes em vez de simplesmente apagar tudo.
-
 ## 🐛 Solução de problemas
 
 **AppImage não executa**
-
 ```bash
 chmod +x CachyOS-Cleaner-x86_64.AppImage
 ./CachyOS-Cleaner-x86_64.AppImage
 ```
 
 **Problema com FUSE**
-
 ```bash
 ./CachyOS-Cleaner-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **PySide6 não encontrado durante o desenvolvimento**
-
 ```bash
 .build-python/bin/pip install --upgrade PySide6
 ```
 
 **Recriar o build do zero**
-
 ```bash
-rm -rf .build-python AppDir
+rm -rf .build-python AppDir CachyOS-Cleaner.squashfs CachyOS-Cleaner-x86_64.AppImage
 ./build-appimage.sh
+```
+
+**Erro "No space left on device" ao construir**
+
+O build usa `/tmp` temporariamente. Se houver espaço insuficiente, limpe extrações antigas:
+```bash
+rm -rf /tmp/appimage_extracted_* /tmp/squashfs_check /tmp/test.squashfs
+```
+
+**Restaurar itens de uma limpeza**
+```bash
+# Via interface: menu Histórico → Desfazer
+# Ou manualmente:
+ls ~/.local/share/cachyos-cleaner/undo/
 ```
 
 ## 📋 Status do projeto
@@ -337,9 +395,26 @@ rm -rf .build-python AppDir
 - [x] Cálculo de espaço utilizado
 - [x] Seleção de itens
 - [x] Confirmação antes da limpeza
-- [x] Categorias de segurança
+- [x] Categorias de segurança (Seguro, Revisar, Protegido, Grande)
 - [x] Diretórios protegidos
 - [x] Proteção contra links simbólicos
+- [x] Limpeza do cache do pacman
+- [x] Limpeza segura do cache do pnpm
+- [x] Limpeza segura do cache do npm
+- [x] Limpeza de caches do Yarn
+- [x] Gerenciamento de kernels antigos
+- [x] Limpeza de logs antigos
+- [x] Gerenciamento de arquivos temporários
+- [x] Análise do `/var/cache`
+- [x] Análise de arquivos grandes
+- [x] Visualização gráfica do espaço utilizado (gráfico de barras)
+- [x] Histórico das limpezas
+- [x] Possibilidade de desfazer operações (lixeira + backup)
+- [x] Exclusões personalizadas
+- [x] Lista de diretórios ignorados
+- [x] Áreas de varredura configuráveis (marcar/desmarcar, adicionar, excluir)
+- [x] Integração com ferramentas nativas do Arch/CachyOS
+- [x] Detecção e suporte a múltiplas distribuições Linux
 - [x] Empacotamento Python
 - [x] Empacotamento PySide6
 - [x] Empacotamento Qt
@@ -347,26 +422,31 @@ rm -rf .build-python AppDir
 - [x] Build utilizando mksquashfs
 - [x] Runtime AppImage incorporado
 
+### Em desenvolvimento / Planejado
+
+- [ ] Tradução da interface (i18n com suporte a .po files)
+- [ ] Atualização automática do aplicativo
+
 ## 🔮 Possíveis melhorias futuras
 
-- [ ] Limpeza do cache do pacman
-- [ ] Limpeza segura do cache do pnpm
-- [ ] Limpeza segura do cache do npm
-- [ ] Limpeza de caches do Yarn
-- [ ] Gerenciamento de kernels antigos
-- [ ] Limpeza de logs antigos
-- [ ] Gerenciamento de arquivos temporários
-- [ ] Análise do `/var/cache`
-- [ ] Análise de arquivos grandes
-- [ ] Visualização gráfica do espaço utilizado
-- [ ] Histórico das limpezas
-- [ ] Possibilidade de desfazer operações quando tecnicamente possível
-- [ ] Exclusões personalizadas
-- [ ] Lista de diretórios ignorados
-- [ ] Integração com ferramentas nativas do Arch/CachyOS
+- [ ] Limpeza do cache do pacman ✅
+- [ ] Limpeza segura do cache do pnpm ✅
+- [ ] Limpeza segura do cache do npm ✅
+- [ ] Limpeza de caches do Yarn ✅
+- [ ] Gerenciamento de kernels antigos ✅
+- [ ] Limpeza de logs antigos ✅
+- [ ] Gerenciamento de arquivos temporários ✅
+- [ ] Análise do `/var/cache` ✅
+- [ ] Análise de arquivos grandes ✅
+- [ ] Visualização gráfica do espaço utilizado ✅
+- [ ] Histórico das limpezas ✅
+- [ ] Possibilidade de desfazer operações quando tecnicamente possível ✅
+- [ ] Exclusões personalizadas ✅
+- [ ] Lista de diretórios ignorados ✅
+- [ ] Integração com ferramentas nativas do Arch/CachyOS ✅
 - [ ] Atualização automática do aplicativo
 - [ ] Tradução da interface
-- [ ] Suporte a outras distribuições Linux
+- [ ] Suporte a outras distribuições Linux ✅
 
 ## 🤝 Contribuição
 
@@ -378,6 +458,7 @@ Contribuições são bem-vindas. Antes de adicionar uma nova rotina de limpeza, 
 - Se a operação deve ficar na categoria segura ou exigir revisão.
 - Se links simbólicos podem causar acesso fora do diretório-alvo.
 - Se a operação funciona corretamente em diferentes ambientes Linux.
+- Se a operação detecta e respeita a distribuição Linux em uso.
 
 Rotinas potencialmente destrutivas devem ser tratadas com cautela.
 

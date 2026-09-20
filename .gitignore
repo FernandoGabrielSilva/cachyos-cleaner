@@ -29,6 +29,7 @@ AppDir/usr/lib
 # IDE
 .idea/
 .vscode/
+.kilo/
 
 # Sistema
 .DS_Store
