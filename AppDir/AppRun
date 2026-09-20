@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+PYVER="3.14"
+
+export PYTHONHOME="$HERE/usr"
+export PYTHONNOUSERSITE=1
+
+export PYTHONPATH="$HERE/usr/lib/python${PYVER}/site-packages"
+
+export LD_LIBRARY_PATH="$HERE/usr/lib:$HERE/usr/lib/python${PYVER}/site-packages/PySide6/Qt/lib:${LD_LIBRARY_PATH:-}"
+
+export QT_PLUGIN_PATH="$HERE/usr/lib/python${PYVER}/site-packages/PySide6/Qt/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="$HERE/usr/lib/python${PYVER}/site-packages/PySide6/Qt/plugins/platforms"
+
+exec "$HERE/usr/bin/python3" "$HERE/usr/bin/cachyos-cleaner" "$@"

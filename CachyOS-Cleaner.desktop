@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=CachyOS Cleaner
+Comment=Limpeza segura de caches
+Exec=cachyos-cleaner
+Icon=cachyos-cleaner
+Terminal=false
+Type=Application
+Categories=System;Utility;

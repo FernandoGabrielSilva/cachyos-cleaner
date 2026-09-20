@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# AppImage / AppDir
+*.AppImage
+*.squashfs
+runtime-x86_64
+AppDir/usr/lib
+
+# PyInstaller
+*.spec
+
+# Qt
+*.qmlc
+*.jsc
+
+# IDE
+.idea/
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporários
+*.tmp
+*.temp
