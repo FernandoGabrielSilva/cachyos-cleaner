@@ -379,6 +379,14 @@ O build usa `/tmp` temporariamente. Se houver espaço insuficiente, limpe extra�
 rm -rf /tmp/appimage_extracted_* /tmp/squashfs_check /tmp/test.squashfs
 ```
 
+**Erro ao abrir Configurações**
+
+Feche e reabra o aplicativo. Se persistir, reinstale o AppImage.
+
+**Itens com 0 bytes não aparecem**
+
+Itens sem espaço são automaticamente ocultados na interface principal e nas configurações.
+
 **Restaurar itens de uma limpeza**
 ```bash
 # Via interface: menu Histórico → Desfazer

@@ -282,53 +282,85 @@ class ScanEvent(QEvent):
 class ChartDialog(QDialog):
     def __init__(self, rows, parent=None):
         super().__init__(parent)
-        self.rows = [r for r in rows if r[0] in ("safe", "review", "large") and r[3] > 0]
+        self.rows = sorted(
+            [r for r in rows if r[0] in ("safe", "review", "large") and r[3] > 0],
+            key=lambda r: r[3], reverse=True
+        )
         self.setWindowTitle("Espaço utilizado")
-        self.resize(800, 550)
-        self.setMinimumSize(550, 400)
+        self.resize(850, 600)
+        self.setMinimumSize(600, 450)
         if self.rows:
             total = sum(r[3] for r in self.rows)
             self.setWindowTitle(f"Espaço utilizado — Total: {human(total)}")
 
     def paintEvent(self, event):
         if not self.rows:
+            p = QPainter(self)
+            p.setRenderHint(QPainter.Antialiasing)
+            p.setPen(QColor("#888888"))
+            p.setFont(QFont("Segoe UI", 14))
+            p.drawText(self.width() // 2, self.height() // 2, "Nenhum item com espaço para exibir.")
+            p.end()
             return
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         w = self.width()
         h = self.height()
         margin_left = 20
-        margin_right = 160
+        margin_right = 100
         margin_top = 40
         margin_bottom = 40
         bar_x = margin_left
-        bar_y = margin_top + 25
-        bar_w = max(20, w - margin_left - margin_right)
-        bar_h = h - margin_top - margin_bottom - 25
+        bar_y = margin_top + 18
+        bar_w = max(40, w - margin_left - margin_right)
+        bar_h = h - margin_top - margin_bottom - 20
         max_size = max(r[3] for r in self.rows)
         total = sum(r[3] for r in self.rows)
         if max_size == 0:
             max_size = 1
+        n = len(self.rows)
+        gap = max(3, min(6, int(bar_h / max(n, 1) / 3)))
+        item_height = bar_h / n
         y = bar_y
         p.setFont(QFont("Segoe UI", 9))
+        fm = p.fontMetrics()
         for idx, (kind, name, path, size) in enumerate(self.rows):
             ratio = size / max_size
             bh = max(3, int(ratio * bar_h))
+            if bh < item_height * 0.55:
+                bh = max(3, int(item_height * 0.55))
             color = QColor([
                 "#4f8cff", "#ff6b6b", "#51cf66", "#ffd43b", "#cc5de8",
                 "#ff922b", "#20c997", "#748ffc", "#f06595", "#a9e34b",
                 "#e599f7", "#66d9e8", "#ffa94d", "#74c0fc", "#69db7c",
                 "#e78b2e", "#d0bfff", "#91a6ff", "#7ee8fa", "#e8c4fa",
             ][idx % 20])
+            short_name = name[:26]
+            nw = fm.horizontalAdvance(short_name)
+            if nw > bar_w - 10:
+                short_name = short_name[:max(1, len(short_name) - 3)] + "…"
+                nw = fm.horizontalAdvance(short_name)
+            size_text = human(size)
+            sw = fm.horizontalAdvance(size_text)
             p.setBrush(color)
             p.setPen(Qt.GlobalColor.transparent)
             p.drawRoundedRect(bar_x, y, bar_w, bh, 4, 4)
-            p.setPen(Qt.GlobalColor.white)
-            p.drawText(bar_x + 6, y + bh // 2 + 4, name[:30])
-            p.setPen(QColor("#cccccc"))
-            p.drawText(bar_x + bar_w + 10, y + bh // 2 + 4, human(size))
-            y += bh + 4
-            if y + bh > bar_y + bar_h:
+            if bh >= 18:
+                p.setPen(Qt.GlobalColor.white)
+                p.drawText(bar_x + 6, y + bh // 2 + 4, short_name)
+                if bar_w - nw > 40:
+                    p.drawText(bar_x + bar_w - sw - 8, y + bh // 2 + 4, size_text)
+                else:
+                    tw = fm.horizontalAdvance(size_text)
+                    p.drawText(bar_x + bar_w - tw - 8, y + bh // 2 + 4, size_text)
+            else:
+                p.setPen(QColor("#cccccc"))
+                ty = y + bh // 2 + 4
+                p.drawText(bar_x, ty, short_name)
+                p.setPen(QColor("#888888"))
+                p.drawText(bar_x + nw + 6, ty, size_text)
+            y += max(bh, item_height) + gap
+            if y >= bar_y + bar_h:
                 break
         drawn = idx + 1 if self.rows else 0
         p.setPen(QColor("#888888"))
@@ -358,17 +390,24 @@ class SettingsDialog(QDialog):
         self.areas_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         self.area_checkboxes = {}
         for kind, name, path, size in rows:
+            if size <= 0:
+                continue
             cat = {"safe": "Seguro", "review": "Revisar", "protected": "Protegido", "large": "Grande"}.get(kind, "Outro")
-            text = f"[{cat}] {name} — {path} ({human(size)})"
+            text = f"[{cat}] {name} — {human(size)}"
             item = QListWidgetItem(text)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             if kind in ("safe", "review"):
                 item.setCheckState(Qt.CheckState.Checked)
             else:
                 item.setCheckState(Qt.CheckState.Unchecked)
-                item.setForeground(4, Qt.GlobalColor.gray)
+                item.setForeground(QColor("#666666"))
             self.areas_list.addItem(item)
             self.area_checkboxes[name] = item
+        if self.areas_list.count() == 0:
+            placeholder = QListWidgetItem("Nenhuma área com espaço para exibir.")
+            placeholder.setFlags(placeholder.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            placeholder.setForeground(QColor("#666666"))
+            self.areas_list.addItem(placeholder)
         areas_layout.addWidget(self.areas_list)
         areas_btns = QHBoxLayout()
         add_area = QPushButton("+ Adicionar área")
@@ -740,9 +779,11 @@ class Cleaner(QMainWindow):
 
     def event(self, event):
         if isinstance(event, ScanEvent):
-            self.rows = event.rows
+            self.rows = [r for r in event.rows if r[3] > 0]
             safe_total = 0
             for idx, (kind, name, path, size) in enumerate(self.rows):
+                if size <= 0:
+                    continue
                 item = QTreeWidgetItem([
                     "☑" if kind == "safe" and size else "☐",
                     name, path, human(size),
@@ -858,12 +899,19 @@ class Cleaner(QMainWindow):
         self.start_scan()
 
     def show_settings(self):
-        dlg = SettingsDialog(self.config, self.rows, self)
-        if dlg.exec() == QDialog.Accepted:
-            self.config = load_config()
-            self.exclusions = self.config.get("exclusions", [])
-            self.ignored_dirs = self.config.get("ignored_dirs", [])
-            self.start_scan()
+        QApplication.instance().processEvents()
+        try:
+            dlg = SettingsDialog(self.config, self.rows, self)
+            dlg.setAttribute(Qt.WA_DeleteOnClose)
+            dlg.raise_()
+            dlg.activateWindow()
+            if dlg.exec() == QDialog.Accepted:
+                self.config = load_config()
+                self.exclusions = self.config.get("exclusions", [])
+                self.ignored_dirs = self.config.get("ignored_dirs", [])
+                self.start_scan()
+        except Exception as e:
+            QMessageBox.warning(self, APP_NAME, f"Erro ao abrir configurações:\n{e}")
 
     def show_history(self):
         dlg = HistoryDialog(self)
