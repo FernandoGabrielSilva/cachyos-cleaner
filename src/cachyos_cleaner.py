@@ -287,8 +287,8 @@ class ChartDialog(QDialog):
             key=lambda r: r[3], reverse=True
         )
         self.setWindowTitle("Espaço utilizado")
-        self.resize(850, 600)
-        self.setMinimumSize(600, 450)
+        self.resize(900, 550)
+        self.setMinimumSize(600, 420)
         if self.rows:
             total = sum(r[3] for r in self.rows)
             self.setWindowTitle(f"Espaço utilizado — Total: {human(total)}")
@@ -306,67 +306,81 @@ class ChartDialog(QDialog):
         p.setRenderHint(QPainter.Antialiasing)
         w = self.width()
         h = self.height()
-        margin_left = 20
-        margin_right = 100
-        margin_top = 40
-        margin_bottom = 40
-        bar_x = margin_left
-        bar_y = margin_top + 18
-        bar_w = max(40, w - margin_left - margin_right)
-        bar_h = h - margin_top - margin_bottom - 20
-        max_size = max(r[3] for r in self.rows)
+        margin = 25
         total = sum(r[3] for r in self.rows)
-        if max_size == 0:
-            max_size = 1
-        n = len(self.rows)
-        gap = max(3, min(6, int(bar_h / max(n, 1) / 3)))
-        item_height = bar_h / n
-        y = bar_y
-        p.setFont(QFont("Segoe UI", 9))
-        fm = p.fontMetrics()
+        max_size = max(r[3] for r in self.rows)
+
+        colors = [
+            QColor("#4f8cff"), QColor("#ff6b6b"), QColor("#51cf66"),
+            QColor("#ffd43b"), QColor("#cc5de8"), QColor("#ff922b"),
+            QColor("#20c997"), QColor("#748ffc"), QColor("#f06595"),
+            QColor("#a9e34b"), QColor("#e599f7"), QColor("#66d9e8"),
+            QColor("#ffa94d"), QColor("#74c0fc"), QColor("#69db7c"),
+            QColor("#e78b2e"), QColor("#d0bfff"), QColor("#91a6ff"),
+            QColor("#7ee8fa"), QColor("#e8c4fa"),
+        ]
+
+        # Title
+        p.setPen(Qt.GlobalColor.white)
+        p.setFont(QFont("Segoe UI", 16, QFont.Bold))
+        p.drawText(margin, 30, f"Total: {human(total)}")
+
+        # Stacked horizontal bar
+        bar_h = 70
+        bar_y = 48
+        bar_w = max(100, w - margin * 2)
+        bar_x = margin
+
+        x = bar_x
         for idx, (kind, name, path, size) in enumerate(self.rows):
-            ratio = size / max_size
-            bh = max(3, int(ratio * bar_h))
-            if bh < item_height * 0.55:
-                bh = max(3, int(item_height * 0.55))
-            color = QColor([
-                "#4f8cff", "#ff6b6b", "#51cf66", "#ffd43b", "#cc5de8",
-                "#ff922b", "#20c997", "#748ffc", "#f06595", "#a9e34b",
-                "#e599f7", "#66d9e8", "#ffa94d", "#74c0fc", "#69db7c",
-                "#e78b2e", "#d0bfff", "#91a6ff", "#7ee8fa", "#e8c4fa",
-            ][idx % 20])
-            short_name = name[:26]
-            nw = fm.horizontalAdvance(short_name)
-            if nw > bar_w - 10:
-                short_name = short_name[:max(1, len(short_name) - 3)] + "…"
-                nw = fm.horizontalAdvance(short_name)
-            size_text = human(size)
-            sw = fm.horizontalAdvance(size_text)
+            seg_w = max(2, int(size / total * bar_w))
+            color = colors[idx % len(colors)]
             p.setBrush(color)
             p.setPen(Qt.GlobalColor.transparent)
-            p.drawRoundedRect(bar_x, y, bar_w, bh, 4, 4)
-            if bh >= 18:
+            p.drawRoundedRect(x, bar_y, seg_w, bar_h, 6, 6)
+            x += seg_w
+
+        # Bar border
+        p.setPen(QColor("#333333"))
+        p.setBrush(Qt.GlobalColor.transparent)
+        p.drawRoundedRect(bar_x, bar_y, bar_w, bar_h, 6, 6)
+
+        # Labels on bar (only if segment wide enough)
+        x = bar_x
+        p.setFont(QFont("Segoe UI", 8))
+        for idx, (kind, name, path, size) in enumerate(self.rows):
+            seg_w = max(2, int(size / total * bar_w))
+            color = colors[idx % len(colors)]
+            short_name = name[:16]
+            nw = p.fontMetrics().horizontalAdvance(short_name)
+            if seg_w > nw + 12:
                 p.setPen(Qt.GlobalColor.white)
-                p.drawText(bar_x + 6, y + bh // 2 + 4, short_name)
-                if bar_w - nw > 40:
-                    p.drawText(bar_x + bar_w - sw - 8, y + bh // 2 + 4, size_text)
-                else:
-                    tw = fm.horizontalAdvance(size_text)
-                    p.drawText(bar_x + bar_w - tw - 8, y + bh // 2 + 4, size_text)
-            else:
-                p.setPen(QColor("#cccccc"))
-                ty = y + bh // 2 + 4
-                p.drawText(bar_x, ty, short_name)
-                p.setPen(QColor("#888888"))
-                p.drawText(bar_x + nw + 6, ty, size_text)
-            y += max(bh, item_height) + gap
-            if y >= bar_y + bar_h:
-                break
-        drawn = idx + 1 if self.rows else 0
-        p.setPen(QColor("#888888"))
+                p.drawText(x + 6, bar_y + bar_h // 2 + 4, short_name)
+            x += seg_w
+
+        # Legend below bar
+        legend_y = bar_y + bar_h + 25
         p.setFont(QFont("Segoe UI", 10))
-        p.drawText(margin_left, 20, f"Total: {human(total)}")
-        p.drawText(margin_left, h - 12, f"Mostrando {drawn} de {len(self.rows)} categorias")
+        col_w = (w - margin * 2) / 2
+        col_gap = 12
+        items_per_col = 0
+        for idx, (kind, name, path, size) in enumerate(self.rows):
+            color = colors[idx % len(colors)]
+            col = idx // max(1, (len(self.rows) + 1) // 2)
+            row = idx % max(1, (len(self.rows) + 1) // 2)
+            lx = margin + col * (col_w + col_gap)
+            ly = legend_y + row * 24
+
+            # Color swatch
+            p.setBrush(color)
+            p.setPen(Qt.GlobalColor.transparent)
+            p.drawRoundedRect(lx, ly, 14, 14, 3, 3)
+
+            # Name + size
+            p.setPen(QColor("#e8eaf0"))
+            p.drawText(lx + 20, ly + 12, f"{name[:30]} — {human(size)}")
+            items_per_col = max(items_per_col, row + 1)
+
         p.end()
 
 
